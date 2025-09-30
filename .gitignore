@@ -1,0 +1,15 @@
+# Exclude virtual environments
+venv/
+env/
+
+# Exclude temporary files
+*.log
+*.tmp
+
+# Exclude Pytest cache
+.pytest_cache/
+
+# Exclude Python bytecode
+__pycache__/
+*.pyc
+*.pyo
