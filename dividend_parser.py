@@ -23,20 +23,26 @@ def parse_dividend_line(line: str, DIV_RAW_REPORT: dict, year: str, rates: list)
     ticker = ticker_match.group(1) if ticker_match else ticker_info
 
     # Updated duplicate check: must match ticker, date, amount, currency to skip
+    # Duplicate check
     for ydata in DIV_RAW_REPORT.get("years", []):
         if ydata["year"] == year:
             for div_item in ydata.get("dividends", []):
                 if div_item["ticker"] == ticker:
                     for d in div_item["dividend"]:
-                        if (
-                            d.get("date") == date and
-                            str(d.get("amount", "")) == amount_str and
-                            d.get("currency", "").upper() == currency.upper()
-                        ):
-                            log_event(
-                                f"Duplicate dividend for {ticker} on {date} with amount {amount_str} {currency} - skipping"
-                            )
-                            return {}
+                        if d.get("date") == date:
+                            # Old-style duplicate check (no amount or currency in existing record)
+                            if "amount" not in d or "currency" not in d:
+                                log_event(f"Duplicate dividend for {ticker} on {date} - skipping")
+                                return {}
+                            # Full check if amount/currency exists
+                            if (
+                                str(d.get("amount", "")) == amount_str and
+                                d.get("currency", "").upper() == currency.upper()
+                            ):
+                                log_event(
+                                    f"Duplicate dividend for {ticker} on {date} with amount {amount_str} {currency} - skipping"
+                                )
+                                return {}
 
     # Get exchange rate
     effective_date = date
