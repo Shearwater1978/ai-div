@@ -7,13 +7,12 @@ It helps investors manage dividend and tax records efficiently and store them in
 The peculiarity of this project lies in the fact that all the code was generated using LLM GPT-5. Errors encountered during the code execution process were also resolved through queries to the LLM.
 
 **Features:**
-- Automatically fetch exchange rates for all currencies present in the report.
-- Calculate PLN amounts (`amountPln`) for dividends and taxes.
-- Accumulate exchange rates across months using `merge_rates`.
-- Support tickers with spaces before ISIN (e.g., `MGA (CA...)`).
-- Skip and store year-mismatched tax lines in `tax_skipped_YEAR.csv`.
-- Prevent duplicate entries.
-- Modular architecture with full test coverage.
+- Multiple currencies in a single report (USD, CAD, etc.)
+- Automatic PLN conversion (`amountPln`)
+- Merging exchange rates across multiple months in the same year (`merge_rates`)
+- Extraction and accumulation of monthly summaries (`monthly_dividends`, `monthly_taxes`)
+- Duplicate protection for monthly summaries
+- Full unit and integration test coverage
 
 ---
 
