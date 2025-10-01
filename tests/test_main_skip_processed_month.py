@@ -46,39 +46,42 @@ def create_test_json(tmp_path, year, month_name):
 
 
 def test_main_skips_processed_month(monkeypatch, tmp_path):
-    """
-    Проверка:
-    - main.py пропускает обработку CSV за месяц, если в JSON этого года уже есть monthly_dividends и monthly_taxes за этот месяц.
-    """
+    # Создаём тестовые файлы
+    csv_filename = "U12345678_202503_202503.csv"
+    csv_file = tmp_path / csv_filename
+    csv_file.write_text(
+        'Statement,Data,Period,"March 1, 2025 - March 31, 2025"\n'
+        "Dividends,Header,Currency\n"
+        "Dividends,Data,USD,2025-03-05,TST (US0000000001) Cash Dividend USD 0.40 per Share,4.4\n"
+        "Withholding Tax,Header,Currency,Date\n"
+        "Withholding Tax,Data,USD,2025-03-06,TST (US0000000001),-2.12\n",
+        encoding="utf-8"
+    )
 
-    # Подменим рабочий каталог на tmp_path
-    cwd = os.getcwd()
-    os.chdir(tmp_path)
+    tax_reports_dir = tmp_path / "tax_reports"
+    tax_reports_dir.mkdir(exist_ok=True)
+    json_file = tax_reports_dir / "divs_2025.json"
+    json_data = {
+        "years": [
+            {
+                "year": "2025",
+                "monthly_dividends": [{"month": "march", "amountMonth": 10.0, "amountPlnMonth": 40.0}],
+                "monthly_taxes": [{"month": "march", "amountMonth": -5.0, "amountPlnMonth": -20.0}],
+                "dividends": [],
+                "taxes": [],
+                "fees": []
+            }
+        ]
+    }
+    json_file.write_text(json.dumps(json_data), encoding="utf-8")
 
-    # 1. Создаём фиктивный CSV за март 2025
-    csv_filename = "U123456_202503_202503.csv"
-    statement_line = 'Statement,Data,Period,"March 1, 2025 - March 31, 2025"'
-    create_test_csv(tmp_path, csv_filename, statement_line)
+    # Подменяем process_broker_csv на заглушку
+    monkeypatch.setattr(main, "process_broker_csv", lambda file: (_ for _ in ()).throw(
+        AssertionError("process_broker_csv should not be called")
+    ))
 
-    # 2. Создаём JSON, в котором март 2025 уже обработан
-    create_test_json(tmp_path, "2025", "march")
+    # Подменяем glob.glob чтобы вернуть только наш CSV
+    monkeypatch.setattr(main.glob, "glob", lambda pattern: [str(csv_file)])
 
-    # 3. Подменим process_broker_csv на заглушку, которая упадёт если вызовется
-    def fake_process_broker_csv(file):
-        raise AssertionError(f"process_broker_csv was called for {file}, but should have been skipped")
-
-    monkeypatch.setattr(main, "process_broker_csv", fake_process_broker_csv)
-
-    # 4. Запускаем main.py как при вызове all
-    sys.argv = ["main.py", "all"]
-
-    # Подменим glob.glob, чтобы вернуть наш тестовый CSV
-    monkeypatch.setattr(os, "getcwd", lambda: str(tmp_path))
-    monkeypatch.setattr(main.glob, "glob", lambda pattern: [csv_filename])
-
-    # Запустим main.py
-    main.__main__.__globals__["__name__"] = "__main__"  # Убеждаемся, что код в main запустится
-    main.main()
-
-    # Возвращаем рабочий каталог
-    os.chdir(cwd)
+    # Запускаем run_main в режиме all
+    main.run_main(["all"])
