@@ -1,11 +1,11 @@
 import sys
 import os
 import glob
-import json
-import calendar
 from broker_report_processor import process_broker_csv
 from date_parser import parse_date_line
 from logger_module import log_module_call, log_event
+import json
+import calendar
 
 def get_month_name_from_csv(csv_file):
     """Extracts year, fromDate, toDate, and month name from broker CSV file."""
@@ -21,7 +21,7 @@ def month_already_processed(year, month_name):
     """Checks if monthly_dividends and monthly_taxes in JSON for the year already contain this month."""
     json_path = os.path.join("tax_reports", f"divs_{year}.json")
     if not os.path.exists(json_path):
-        return False  # No JSON means not processed yet
+        return False
 
     try:
         with open(json_path, "r", encoding="utf-8") as jf:
@@ -37,30 +37,31 @@ def month_already_processed(year, month_name):
     monthly_divs = year_entry.get("monthly_dividends", [])
     monthly_tax = year_entry.get("monthly_taxes", [])
 
-    # If either divs or taxes already have this month → skip
     if any(m["month"] == month_name for m in monthly_divs) and any(m["month"] == month_name for m in monthly_tax):
         return True
 
     return False
 
-
-if __name__ == "__main__":
+def run_main(argv=None):
+    """Main entry point of the script, extracted for testability."""
     log_module_call("main")
+    if argv is None:
+        argv = sys.argv[1:]
 
-    if len(sys.argv) < 2:
+    if not argv:
         print("Usage: python main.py <CSV filename or 'all'>")
-        sys.exit(1)
+        return
 
-    arg = sys.argv[1]
+    arg = argv[0]
 
     if arg.lower() == "all":
-        pattern = "U*_*.csv"   # matches U16012359_202507_202507.csv type files
+        pattern = "U*_*.csv"
         report_files = glob.glob(pattern)
-        
+
         if not report_files:
             log_event("No broker CSV reports matching pattern found.")
             print("No broker CSV reports found.")
-            sys.exit(0)
+            return
 
         processed_count = 0
         skipped_count = 0
@@ -86,17 +87,19 @@ if __name__ == "__main__":
         print(f"Processed {processed_count} reports, skipped {skipped_count} already processed months.")
 
     else:
-        # Process single file
         report_file = arg
         if not os.path.exists(report_file):
             log_event(f"CSV file {report_file} not found. Exiting.")
             print(f"CSV file {report_file} not found.")
-            sys.exit(1)
+            return
 
         year, fromDate, toDate, month_name = get_month_name_from_csv(report_file)
         if month_already_processed(year, month_name):
             log_event(f"Report for {month_name} {year} already processed - skipping")
             print(f"Report for {month_name} {year} already processed - skipping")
-            sys.exit(0)
+            return
 
         process_broker_csv(report_file)
+
+if __name__ == "__main__":
+    run_main()
