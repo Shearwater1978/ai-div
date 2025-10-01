@@ -1,11 +1,11 @@
 import sys
 import os
 import glob
+import json
+import calendar
 from broker_report_processor import process_broker_csv
 from date_parser import parse_date_line
 from logger_module import log_module_call, log_event
-import json
-import calendar
 
 def get_month_name_from_csv(csv_file):
     """Extracts year, fromDate, toDate, and month name from broker CSV file."""
@@ -30,20 +30,23 @@ def month_already_processed(year, month_name):
         log_event(f"Error reading JSON file {json_path}: {e}")
         return False
 
-    year_entry = next((y for y in data.get("years", []) if y["year"] == year), None)
+    # Сравнение по строкам, независимо от регистра
+    year_entry = next((y for y in data.get("years", []) if str(y["year"]) == str(year)), None)
     if not year_entry:
         return False
 
     monthly_divs = year_entry.get("monthly_dividends", [])
     monthly_tax = year_entry.get("monthly_taxes", [])
 
-    if any(m["month"] == month_name for m in monthly_divs) and any(m["month"] == month_name for m in monthly_tax):
+    # Месяц считается обработанным, если он есть и в monthly_dividends, и в monthly_taxes
+    if any(m.get("month", "").lower() == month_name.lower() for m in monthly_divs) and \
+       any(m.get("month", "").lower() == month_name.lower() for m in monthly_tax):
         return True
 
     return False
 
 def run_main(argv=None):
-    """Main entry point of the script, extracted for testability."""
+    """Main entry point of the script (supports test calls)."""
     log_module_call("main")
     if argv is None:
         argv = sys.argv[1:]
@@ -55,7 +58,7 @@ def run_main(argv=None):
     arg = argv[0]
 
     if arg.lower() == "all":
-        pattern = "U*_*.csv"
+        pattern = "U*_*.csv"   # matches U12345678_202507_202507.csv type files
         report_files = glob.glob(pattern)
 
         if not report_files:
