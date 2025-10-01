@@ -52,6 +52,12 @@ project_root/
 ```
 
 ## 4. Usage
+Download your broker report in CSV format: (MTM Summary → Period → Custom → Select Month → Download CSV).
+
+Place the CSV file in the same directory as main.py or pass the file path as an argument.
+
+Run:
+
 Run main script:
 ```bash
 python main.py <report_filename.csv>
@@ -62,7 +68,15 @@ Example:
 python main.py broker_report.csv
 ```
 
-Where `broker_report.csv` is a file exported from the broker portal and located in the same directory as `main.py`.
+The script will:
+
+- Parse dates and currencies from CSV.
+- Fetch rates from NBP API for all currencies in that month.
+- Build/update `tax_reports/divs_YEAR.json` with `dividends`, `taxes`, `fees`, and `rates`.
+- Calculate `amountPln` (amount * mid).
+- Merge exchange rates across months in the same year.
+- Append `monthly_dividends` and `monthly_taxes` summaries for that month.
+- Save a copy of the CSV to `reports/div_fromDate_toDate.csv`.
 
 ## 5. Example Output
 Input CSV:
@@ -83,6 +97,28 @@ Rates block (`rates` in JSON):
 ]
 ```
 
+Monthly Summaries
+Example JSON snippet after processing March 2025:
+```json
+{
+  "year": "2025",
+  "monthly_dividends": [
+    {
+      "month": "march",
+      "amountMonth": 4.40,
+      "amountPlnMonth": 18.128
+    }
+  ],
+  "monthly_taxes": [
+    {
+      "month": "march",
+      "amountMonth": -2.12,
+      "amountPlnMonth": -8.798
+    }
+  ]
+}
+```
+
 Skipped taxes (`tax_skipped_2025.csv`):
 ```
 Withholding Tax,Data,USD,2024-12-30,BBB (US0000000000) Cash Dividend USD 0.50 per Share - Foreign Tax,-1.00
@@ -98,6 +134,16 @@ Run with coverage report:
 ```bash
 pytest --cov=. --cov-report=term-missing --cov-report=html
 ```
+
+Test coverage:
+
+- Unit Tests:
+  - `date_parser`, `dividend_parser`, `tax_parser`, `monthly_summary_dividends`, `monthly_summary_taxes`.
+- Integration Tests:
+  - Full CSV → JSON pipeline (ёbroker_report_processorё)
+  - Merge of exchange rates from multiple months
+  - Adding monthly summaries once per month
+  - Accumulation over multiple months in one year
 
 ## 7. CI/CD with GitHub Actions
 Automated tests for all branches except `main` with coverage report (`.github/workflows/run-tests.yml`):
@@ -138,5 +184,18 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: html-coverage-report
+```
+
+## 📌 Notes
+- Reprocessing the same month will not duplicate monthly summaries — logs will show `"already exists - skipping"`.
+- Exchange rates and transactions accumulate across months in each year.
+- Tax lines from a different year are saved to `tax_reports/tax_skipped_YEAR.csv`.
+
+## 📞 Support
+If you encounter an issue:
+
+- Open a GitHub issue.
+- Provide example CSV lines.
+- Attach logs from process.log for faster debugging.
           path: htmlcov/
 ```
