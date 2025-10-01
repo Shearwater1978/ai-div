@@ -13,3 +13,8 @@ env/
 __pycache__/
 *.pyc
 *.pyo
+
+# Exclude artifacts
+reports/
+tax_reports/
+U*.csv
