@@ -174,7 +174,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'  # или твоя версия
+          python-version: '3.11'  # or any other version
 
       - name: Install dependencies
         run: |
