@@ -33,20 +33,22 @@ pip install -r requirements.txt
 ```
 
 ## 3. Project Structure
-```bash
+```text
 project_root/
-├── broker_report_processor.py     # Main CSV processing logic
-├── date_parser.py                 # Extracts year/fromDate/toDate from Statement line
-├── exchange_rate.py                # Fetches rates from NBP API
-├── dividend_parser.py              # Parses dividend lines
-├── dividend_adder.py               # Adds dividend entries to JSON
-├── tax_parser.py                   # Parses tax lines
-├── tax_adder.py                    # Adds tax entries to JSON
-├── logger_module.py                # Logging
-├── reports/                        # Archived CSV reports
-├── tax_reports/                    # JSON files + skipped tax lines
-├── tests/                          # All unit and integration tests
-└── README.md                       # Project description and usage instructions
+├── main.py                             # Entry point script
+├── broker_report_processor.py          # Main pipeline: CSV → JSON + monthly summaries
+├── logger_module.py                    # Centralized logging
+├── date_parser.py                       # Extract report date range (year/from/to)
+├── exchange_rate.py                     # Fetch rates from NBP API for currencies/date range
+├── dividend_parser.py                   # Parse dividend rows and calculate amountPln
+├── dividend_adder.py                    # Add new dividends to year JSON
+├── tax_parser.py                        # Parse tax rows and calculate amountPln
+├── tax_adder.py                         # Add new taxes to year JSON
+├── monthly_summary_dividends.py         # Calculate monthly totals for dividends
+├── monthly_summary_taxes.py             # Calculate monthly totals for taxes
+├── reports/                             # Archived original CSVs
+├── tax_reports/                         # Generated JSONs and skipped tax lines
+└── tests/                               # Unit and integration tests
 ```
 
 ## 4. Usage
