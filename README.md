@@ -183,6 +183,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: html-coverage-report
+          path: htmlcov/
 ```
 
 ## 📌 Notes
@@ -196,5 +197,3 @@ If you encounter an issue:
 - Open a GitHub issue.
 - Provide example CSV lines.
 - Attach logs from process.log for faster debugging.
-          path: htmlcov/
-```
