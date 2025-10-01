@@ -3,16 +3,14 @@ from logger_module import log_module_call, log_event
 
 def parse_dividend_line(line: str, DIV_RAW_REPORT: dict, year: str, rates: list):
     """
-    Parse Dividends,Data line from broker CSV.
-    Return dict with exchangeRate, effectiveDate, amountPln.
-    Example:
-    Dividends,Data,USD,2025-01-02,MGA (CA5592224011) Cash Dividend USD 0.40 per Share (Ordinary Dividend),4.4
+    Parse Dividends,Data line (supports Ordinary and Bonus) and return dividend dict.
     """
     log_module_call("dividend_parser")
+    log_event(f"Processing dividend CSV line: {line.strip()}")
 
     parts = line.strip().split(",")
     if len(parts) < 6:
-        log_event("Invalid dividend line format")
+        log_event("Invalid dividend line format - skipping")
         return {}
 
     currency = parts[2].strip()
@@ -24,16 +22,19 @@ def parse_dividend_line(line: str, DIV_RAW_REPORT: dict, year: str, rates: list)
     ticker_match = re.match(r"([A-Z]+)\s*\(", ticker_info)
     ticker = ticker_match.group(1) if ticker_match else ticker_info
 
-    # Check duplicates
+    # Updated duplicate check: must match ticker, date, amount, currency to skip
     for ydata in DIV_RAW_REPORT.get("years", []):
         if ydata["year"] == year:
-            for div_item in ydata["dividends"]:
+            for div_item in ydata.get("dividends", []):
                 if div_item["ticker"] == ticker:
-                    if any(d['date'] == date for d in div_item['dividend']):
-                        log_event(f"Duplicate dividend {ticker} on {date}")
-                        return {}
+                    for d in div_item["dividend"]:
+                        if d["date"] == date and d["amount"] == amount_str and d["currency"] == currency:
+                            log_event(
+                                f"Duplicate dividend for {ticker} on {date} with amount {amount_str} {currency} - skipping"
+                            )
+                            return {}
 
-    # Get rate from RATES
+    # Get exchange rate
     effective_date = date
     exchange_rate = None
     rate_entry = next((r for r in rates if r['currency'] == currency), None)
@@ -42,7 +43,6 @@ def parse_dividend_line(line: str, DIV_RAW_REPORT: dict, year: str, rates: list)
         if rate_match:
             exchange_rate = rate_match["mid"]
         else:
-            # Closest previous date
             past_rates = sorted(rate_entry["rate"], key=lambda x: x["effectiveDate"], reverse=True)
             for rr in past_rates:
                 if rr["effectiveDate"] < date:
@@ -50,7 +50,7 @@ def parse_dividend_line(line: str, DIV_RAW_REPORT: dict, year: str, rates: list)
                     effective_date = rr["effectiveDate"]
                     break
 
-    # Calculate amount in PLN
+    # Calculate amountPln
     amount_pln = ""
     try:
         if exchange_rate is not None:
