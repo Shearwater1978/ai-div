@@ -2,7 +2,7 @@ import logging
 
 def setup_logger():
     """
-    Configure logger to output to file and console
+    Configure logger to output to file and console.
     """
     logging.basicConfig(
         level=logging.INFO,
