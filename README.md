@@ -153,9 +153,15 @@ on:
   push:
     branches-ignore:
       - main
+    paths:
+      - '**.py'          # Only Python files
+      - '!**.md'         # Ignore any Markdown files
   pull_request:
     branches-ignore:
       - main
+    paths:
+      - '**.py'
+      - '!**.md'
 
 jobs:
   test:
@@ -168,7 +174,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.11'  # или твоя версия
 
       - name: Install dependencies
         run: |
@@ -180,7 +186,7 @@ jobs:
           pytest --cov=. --cov-report=term-missing --cov-report=html --disable-warnings -v
 
       - name: Upload HTML coverage report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: html-coverage-report
           path: htmlcov/
