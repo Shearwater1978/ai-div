@@ -28,7 +28,11 @@ def parse_dividend_line(line: str, DIV_RAW_REPORT: dict, year: str, rates: list)
             for div_item in ydata.get("dividends", []):
                 if div_item["ticker"] == ticker:
                     for d in div_item["dividend"]:
-                        if d["date"] == date and d["amount"] == amount_str and d["currency"] == currency:
+                        if (
+                            d.get("date") == date and
+                            str(d.get("amount", "")) == amount_str and
+                            d.get("currency", "").upper() == currency.upper()
+                        ):
                             log_event(
                                 f"Duplicate dividend for {ticker} on {date} with amount {amount_str} {currency} - skipping"
                             )
