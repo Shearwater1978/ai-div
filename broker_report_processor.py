@@ -31,7 +31,6 @@ def merge_rates(existing_rates, new_rates):
                 "currency": currency,
                 "rate": new_rate_list.copy()
             })
-
     return existing_rates
 
 
@@ -56,8 +55,10 @@ def process_broker_csv(reportFileName: str):
         "currencies": []
     }
     currencies_found = set()
+    RAW_MONTHLY_TAX_LINES = []
+    in_tax_block = False
 
-    # First pass — extract date range and all currencies
+    # First pass — capture date range, currencies, and ALL tax block lines for all currencies
     with open(reportFileName, "r", encoding="utf-8") as f:
         for line in f:
             if "Statement,Data,Period," in line:
@@ -65,6 +66,22 @@ def process_broker_csv(reportFileName: str):
                 CURRENCIES_AND_DATES["fromDate"] = fromDate
                 CURRENCIES_AND_DATES["toDate"] = toDate
 
+            # Each new currency tax block starts here
+            if "Withholding Tax,Header,Currency,Date" in line:
+                in_tax_block = True
+                continue
+
+            # Skip total lines but DO NOT end block
+            if "Withholding Tax,Data,Total" in line:
+                continue
+            if "Withholding Tax,Data,Total Withholding Tax in USD" in line:
+                continue
+
+            # Append all monthly tax rows for the current block
+            if in_tax_block and "Withholding Tax,Data" in line:
+                RAW_MONTHLY_TAX_LINES.append(line.strip())
+
+            # Collect currencies
             if ",Data," in line and not "Total" in line:
                 parts = line.strip().split(",")
                 if len(parts) >= 3:
@@ -104,7 +121,7 @@ def process_broker_csv(reportFileName: str):
             ]
         }
 
-    # Second pass — process dividends and taxes
+    # Second pass — process dividends and taxes into DIV_RAW_REPORT
     with open(reportFileName, "r", encoding="utf-8") as f:
         for line in f:
             if "Dividends,Header,Currency" in line or line.startswith("Dividends,Data,Total"):
@@ -121,10 +138,10 @@ def process_broker_csv(reportFileName: str):
                 DIV_RAW_REPORT = add_tax(DIV_RAW_REPORT, TAX_NEW, year)
                 continue
 
-    # === New integration: calculate monthly summaries ===
+    # Monthly summaries
     log_event("Calculating monthly summaries for dividends and taxes")
     DIV_RAW_REPORT = monthly_summary_dividends(fromDate, toDate, DIV_RAW_REPORT, year)
-    DIV_RAW_REPORT = monthly_summary_taxes(fromDate, toDate, DIV_RAW_REPORT, year)
+    DIV_RAW_REPORT = monthly_summary_taxes(fromDate, toDate, DIV_RAW_REPORT, year, RAW_MONTHLY_TAX_LINES)
 
     # Save JSON
     with open(json_path, "w", encoding="utf-8") as jf:
